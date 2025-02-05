@@ -56,11 +56,25 @@ def flipkart():
         # Limit to first 5 products
         for idx, container in enumerate(product_containers[:5], 1):
             try:
-                # Title extraction with multiple attempts
-                try:
-                    title = container.find_element(By.XPATH, './/div[contains(@class, "_4rR01t") or contains(text(), "iPhone")]').text
-                except:
-                    title = "Title Not Available"
+                # More comprehensive title extraction
+                title_selectors = [
+                    './/a[contains(@href, "/p/")]//div[@class="_4rR01t"]',
+                    './/div[contains(@class, "_4rR01t")]',
+                    './/a[contains(@class, "s1Q9rs")]',
+                    './/a[contains(@href, "/p/")]',
+                    './/div[contains(@class, "product-title")]'
+                ]
+                
+                title = "Title Not Available"
+                for selector in title_selectors:
+                    try:
+                        title_elem = container.find_element(By.XPATH, selector)
+                        candidate_title = title_elem.text.strip()
+                        if candidate_title and candidate_title != "Add to Compare":
+                            title = candidate_title
+                            break
+                    except:
+                        continue
                 
                 # Price extraction with multiple attempts
                 try:
