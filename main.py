@@ -9,8 +9,17 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 import time
 import random
+import pandas as pd
 
-# Shared WebDriver Creation Function
+# Utility Functions
+def get_random_user_agent():
+    user_agents = [
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0"
+    ]
+    return random.choice(user_agents)
+
 def create_browser(driver_path):
     chrome_options = Options()
     chrome_options.add_argument('--no-sandbox')
@@ -21,15 +30,6 @@ def create_browser(driver_path):
     service = Service(driver_path)
     browser = webdriver.Chrome(service=service, options=chrome_options)
     return browser
-
-# Utility Functions
-def get_random_user_agent():
-    user_agents = [
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0"
-    ]
-    return random.choice(user_agents)
 
 # Amazon Scraping Function
 def scrape_amazon(name, driver_path):
@@ -56,20 +56,13 @@ def scrape_amazon(name, driver_path):
         html = browser.page_source
         soup = BeautifulSoup(html, 'lxml')
         
-        # Product card selectors
-        selectors = [
-            'div[data-component-type="s-search-result"]',
-            'div.s-result-item',
-            'div.sg-col-inner'
-        ]
-        
         amazon_results = []
-        for card in soup.select(selectors[0])[:5]:
+        for card in soup.select('div[data-component-type="s-search-result"]')[:5]:
             try:
                 # Title extraction
                 title_elem = (card.select_one('h2 a.a-link-normal span') or 
-                              card.select_one('h2 span.a-text-normal') or
-                              card.select_one('h2'))
+                            card.select_one('h2 span.a-text-normal') or
+                            card.select_one('h2'))
                 
                 if not title_elem:
                     continue
@@ -135,16 +128,17 @@ def scrape_flipkart(name, driver_path):
             (By.XPATH, '//a[contains(@href, "/p/")]/../..')
         ]
         
+        product_containers = []
         for strategy in product_strategies:
             try:
                 product_containers = browser.find_elements(*strategy)
                 if product_containers:
                     break
-            except Exception as e:
-                st.warning(f"Flipkart strategy {strategy} failed")
+            except Exception:
+                continue
         
         flipkart_results = []
-        for idx, container in enumerate(product_containers[:5]):
+        for container in product_containers[:5]:
             try:
                 # Title extraction
                 try:
@@ -184,37 +178,161 @@ def scrape_flipkart(name, driver_path):
     finally:
         browser.quit()
 
-# Streamlit App
+# Streamlit App with Enhanced UI
 def main():
-    st.title('Price Comparison: Amazon vs Flipkart')
-    
+    # Page config
+    st.set_page_config(
+        page_title="Price Comparison Tool",
+        page_icon="🔍",
+        layout="wide"
+    )
+
+    # Custom CSS
+    st.markdown("""
+        <style>
+        .main {
+            padding: 2rem;
+        }
+        .stAlert {
+            padding: 1rem;
+            border-radius: 0.5rem;
+        }
+        .product-card {
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            border: 1px solid #e0e0e0;
+            margin: 1rem 0;
+            background-color: white;
+        }
+        .price-tag {
+            font-size: 1.5rem;
+            color: #2ecc71;
+            font-weight: bold;
+        }
+        .company-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # Header Section
+    col1, col2, col3 = st.columns([1,2,1])
+    with col2:
+        st.title('🔍 Smart Price Comparison')
+        st.markdown('### Compare prices across Amazon and Flipkart')
+
+    # Search Section
+    search_container = st.container()
+    with search_container:
+        col1, col2 = st.columns([3,1])
+        with col1:
+            search_query = st.text_input('', placeholder='Enter product name (e.g., iPhone 13, Samsung TV, Laptop...)')
+        with col2:
+            search_button = st.button('Compare Prices 🔄', use_container_width=True)
+
     # ChromeDriver path
     DRIVER_PATH = str(Path('chromedriver.exe').resolve())
-    
-    # Search input
-    search_query = st.text_input('Enter product to search')
-    
-    if st.button('Compare Prices'):
-        if search_query:
-            with st.spinner('Searching Amazon and Flipkart...'):
-                # Parallel scraping
-                amazon_results = scrape_amazon(search_query, DRIVER_PATH)
-                flipkart_results = scrape_flipkart(search_query, DRIVER_PATH)
+
+    if search_button and search_query:
+        progress_text = "Searching across platforms..."
+        progress_bar = st.progress(0)
+        
+        # Searching animation
+        for i in range(100):
+            time.sleep(0.01)
+            progress_bar.progress(i + 1)
+
+        with st.spinner('Fetching results...'):
+            amazon_results = scrape_amazon(search_query, DRIVER_PATH)
+            flipkart_results = scrape_flipkart(search_query, DRIVER_PATH)
+
+        progress_bar.empty()
+
+        # Results Section
+        if amazon_results or flipkart_results:
+            st.markdown("### 📊 Comparison Results")
             
-            # Display Results
-            st.subheader('Amazon Results')
-            for product in amazon_results:
-                st.write(f"**Title:** {product['title']}")
-                st.write(f"**Price:** ₹{product['price']}")
-                st.write(f"**Link:** {product['link']}")
-                st.markdown('---')
+            # Create columns for side-by-side comparison
+            amazon_col, flipkart_col = st.columns(2)
+
+            # Amazon Results
+            with amazon_col:
+                st.markdown("""
+                    <div class="company-header">
+                        <h3>Amazon</h3>
+                    </div>
+                """, unsafe_allow_html=True)
+                
+                for product in amazon_results:
+                    st.markdown("""
+                        <div class="product-card">
+                            <h4>{}</h4>
+                            <p class="price-tag">₹{}</p>
+                            <a href="{}" target="_blank">View on Amazon →</a>
+                        </div>
+                    """.format(
+                        product['title'],
+                        product['price'],
+                        product['link']
+                    ), unsafe_allow_html=True)
+
+            # Flipkart Results
+            with flipkart_col:
+                st.markdown("""
+                    <div class="company-header">
+                        <h3>Flipkart</h3>
+                    </div>
+                """, unsafe_allow_html=True)
+                
+                for product in flipkart_results:
+                    st.markdown("""
+                        <div class="product-card">
+                            <h4>{}</h4>
+                            <p class="price-tag">₹{}</p>
+                            <a href="{}" target="_blank">View on Flipkart →</a>
+                        </div>
+                    """.format(
+                        product['title'],
+                        product['price'],
+                        product['link']
+                    ), unsafe_allow_html=True)
+
+            # Price Analysis
+            st.markdown("### 💡 Price Analysis")
             
-            st.subheader('Flipkart Results')
-            for product in flipkart_results:
-                st.write(f"**Title:** {product['title']}")
-                st.write(f"**Price:** ₹{product['price']}")
-                st.write(f"**Link:** {product['link']}")
-                st.markdown('---')
+            # Convert prices to numeric values for comparison
+            amazon_prices = [float(p['price']) for p in amazon_results if p['price'].replace('.','').isdigit()]
+            flipkart_prices = [float(p['price']) for p in flipkart_results if p['price'].replace('.','').isdigit()]
+
+            if amazon_prices and flipkart_prices:
+                analysis_cols = st.columns(3)
+                
+                with analysis_cols[0]:
+                    st.metric("Lowest Price on Amazon", f"₹{min(amazon_prices):,.2f}")
+                
+                with analysis_cols[1]:
+                    st.metric("Lowest Price on Flipkart", f"₹{min(flipkart_prices):,.2f}")
+                
+                with analysis_cols[2]:
+                    price_diff = min(amazon_prices) - min(flipkart_prices)
+                    better_platform = "Flipkart" if price_diff > 0 else "Amazon"
+                    st.metric("Potential Savings", 
+                            f"₹{abs(price_diff):,.2f}",
+                            f"Better price on {better_platform}")
+
+        else:
+            st.error("No results found. Please try a different search term.")
+
+    # Footer
+    st.markdown("""
+        ---
+        <div style='text-align: center; color: #666;'>
+            Made with ❤️ | Data sourced from Amazon.in and Flipkart.com
+        </div>
+    """, unsafe_allow_html=True)
 
 if __name__ == '__main__':
     main()
