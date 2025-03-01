@@ -161,14 +161,73 @@ class AmazonReviewScraper:
         final_decision = self.analyze_sentiment(all_titles)
         return all_titles, final_decision
 
+def get_driver_path():
+    """Get the ChromeDriver path from the user with validation"""
+    while True:
+        driver_path = input("\nEnter the path to chromedriver.exe (or press Enter for default 'chromedriver.exe'): ").strip()
+        
+        # Use default if empty
+        if not driver_path:
+            driver_path = "chromedriver.exe"
+            
+        # Check if the file exists
+        if os.path.isfile(driver_path):
+            return driver_path
+        else:
+            print(f"⚠️ The file '{driver_path}' does not exist. Please enter a valid path.")
+
+def get_product_url():
+    """Get Amazon product URL from user with basic validation"""
+    while True:
+        url = input("\nEnter the Amazon product URL: ").strip()
+        
+        # Basic validation to ensure it's an Amazon URL
+        if url and ("amazon.in" in url or "amazon.com" in url):
+            return url
+        else:
+            print("⚠️ Please enter a valid Amazon product URL.")
+
+def get_max_pages():
+    """Get maximum number of review pages to scrape from user"""
+    while True:
+        try:
+            pages = input("\nEnter the maximum number of review pages to scrape (1-10, default is 2): ").strip()
+            
+            # Use default if empty
+            if not pages:
+                return 2
+                
+            pages = int(pages)
+            
+            # Validate range
+            if 1 <= pages <= 10:
+                return pages
+            else:
+                print("⚠️ Please enter a number between 1 and 10.")
+        except ValueError:
+            print("⚠️ Please enter a valid number.")
+
 def main():
-    driver_path = "chromedriver.exe"  # Update this path if needed
-    product_url = "https://www.amazon.in/iPhone-16-128-Plus-Ultrmarine/dp/B0DGJ65N7V/"  # Simplified URL
-
+    print("\n🔍 Amazon Review Scraper - Should You Buy It? 🛒")
+    print("=" * 60)
+    print("This tool analyzes Amazon product review titles to determine if a product is worth buying.")
+    
+    # Get input from user
+    driver_path = get_driver_path()
+    product_url = get_product_url()
+    max_pages = get_max_pages()
+    
+    print("\n📊 Starting analysis with the following parameters:")
+    print(f"- ChromeDriver path: {driver_path}")
+    print(f"- Product URL: {product_url}")
+    print(f"- Maximum pages to scrape: {max_pages}")
+    
+    # Initialize and run the scraper
     scraper = AmazonReviewScraper(driver_path)
-    review_titles, decision = scraper.scrape_review_titles(product_url, max_pages=3)
+    print("\n🔄 Scraping reviews... (This may take a few moments)")
+    review_titles, decision = scraper.scrape_review_titles(product_url, max_pages=max_pages)
 
-    # Fixed: Check if reviews were collected
+    # Check if reviews were collected
     if not review_titles:
         print("\n❌ Error: Failed to collect reviews. Please check the URL or your network connection.")
         return
@@ -178,6 +237,7 @@ def main():
         print(f"{i}. {title}")
 
     print("\n🔍 Final Verdict:", decision)
+    print("\n💡 Thank you for using the Amazon Review Scraper!")
 
 if __name__ == "__main__":  # Fixed: Use double underscores
     main()

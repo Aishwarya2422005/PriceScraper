@@ -12,6 +12,11 @@ from selenium.webdriver.common.by import By
 import time
 import random
 import pandas as pd
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Database Functions
 def create_userdb():
@@ -58,7 +63,11 @@ def get_random_user_agent():
     user_agents = [
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0"
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
+        # Added more recent user agents
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
     ]
     return random.choice(user_agents)
 
@@ -68,9 +77,19 @@ def create_browser(driver_path):
     chrome_options.add_argument('--disable-dev-shm-usage')
     chrome_options.add_argument('--headless')
     chrome_options.add_argument(f'user-agent={get_random_user_agent()}')
+    # Added options to better emulate a real browser
+    chrome_options.add_argument('--disable-blink-features=AutomationControlled')
+    chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])
+    chrome_options.add_experimental_option('useAutomationExtension', False)
+    chrome_options.add_argument('--disable-notifications')
+    chrome_options.add_argument('--lang=en-US,en;q=0.9')
     
     service = Service(driver_path)
     browser = webdriver.Chrome(service=service, options=chrome_options)
+    
+    # Set navigator.webdriver to false using CDP
+    browser.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+    
     return browser
 
 # Amazon Scraping Function
@@ -94,6 +113,8 @@ def scrape_amazon(name, driver_path):
             time.sleep(random.uniform(0.5, 1.5))
         
         html = browser.page_source
+        logger.info(f"Amazon HTML length: {len(html)}")
+        
         soup = BeautifulSoup(html, 'lxml')
         
         amazon_results = []
@@ -135,18 +156,19 @@ def scrape_amazon(name, driver_path):
                 })
                 
             except Exception as e:
-                st.warning(f"Amazon scraping error: {e}")
+                logger.error(f"Amazon product processing error: {e}")
         
+        logger.info(f"Amazon found {len(amazon_results)} results")
         return amazon_results
     
     except Exception as e:
-        st.error(f"Amazon scraping failed: {e}")
+        logger.error(f"Amazon scraping failed: {e}")
         return []
     
     finally:
         browser.quit()
 
-# Flipkart Scraping Function
+# Flipkart Scraping Function - Updated
 def scrape_flipkart(name, driver_path):
     name = name.replace(' ', '+')
     URL = f"https://www.flipkart.com/search?q={name}"
@@ -154,58 +176,216 @@ def scrape_flipkart(name, driver_path):
     browser = create_browser(driver_path)
     
     try:
+        # Add a debug message about starting the scrape
+        logger.info(f"Starting Flipkart scrape for: {name}")
+        
+        # Go to Flipkart and handle any login popup that might appear
         browser.get(URL)
-        time.sleep(10)
         
-        product_strategies = [
-            (By.CSS_SELECTOR, 'div[data-id]'),
-            (By.CSS_SELECTOR, 'div._1AtVbE'),
-            (By.XPATH, '//div[contains(@class, "product")]'),
-            (By.XPATH, '//a[contains(@href, "/p/")]/../..')
-        ]
+        # Wait for page to load and handle popup if it appears
+        try:
+            # Try to close login popup if it appears
+            WebDriverWait(browser, 3).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, 'button._2KpZ6l._2doB4z'))
+            ).click()
+            logger.info("Closed Flipkart login popup")
+        except Exception as popup_err:
+            logger.info(f"No popup found or couldn't close: {popup_err}")
+            
+        # Wait longer for the page to fully load
+        time.sleep(8)
         
-        product_containers = []
-        for strategy in product_strategies:
-            try:
-                product_containers = browser.find_elements(*strategy)
-                if product_containers:
-                    break
-            except Exception:
-                continue
+        # Scroll multiple times with pauses to ensure dynamic content loads
+        for i in range(5):
+            browser.execute_script(f"window.scrollBy(0, {300 + i*200});")
+            time.sleep(1.5)
+        
+        # Scroll back to top
+        browser.execute_script("window.scrollTo(0, 0);")
+        time.sleep(1)
+        
+        # Wait for product elements to be present
+        try:
+            WebDriverWait(browser, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, 'div._1YokD2._3Mn1Gg, div._1AtVbE, div._4ddWXP'))
+            )
+            logger.info("Flipkart product elements found")
+        except Exception as wait_err:
+            logger.warning(f"Timeout waiting for Flipkart elements: {wait_err}")
+        
+        # Get page source and create soup
+        html = browser.page_source
+        logger.info(f"Flipkart HTML length: {len(html)}")
+        
+        # Add HTML debugging info to a file for inspection
+        with open("flipkart_debug.html", "w", encoding="utf-8") as f:
+            f.write(html[:10000])  # Write the first 10000 chars for debugging
+        
+        soup = BeautifulSoup(html, 'lxml')
         
         flipkart_results = []
+        
+        # Try multiple different selector patterns that Flipkart might be using
+        selector_patterns = [
+            'div._1AtVbE div._13oc-S',
+            'div._1AtVbE',
+            'div[data-id]',
+            'div._4ddWXP',
+            'div._2B099V',
+            'a._1fQZEK',
+            '._3pLy-c',
+            '._4rR01T'
+        ]
+        
+        # Try each selector pattern until we find products
+        for pattern in selector_patterns:
+            product_containers = soup.select(pattern)
+            logger.info(f"Selector '{pattern}' found {len(product_containers)} elements")
+            
+            if product_containers:
+                break
+        
+        # If we still have no containers, try a more general approach
+        if not product_containers:
+            logger.info("Trying generic product container identification")
+            # Look for any div containing both a title-like element and a price-like element
+            product_containers = []
+            
+            # All possible title selectors
+            title_selectors = ['div._4rR01T', 'a.s1Q9rs', 'a.IRpwTa', 'div.CXW8mj', '._3LWZlK', '._4ddWXP', '.s1Q9rs']
+            
+            # All possible price selectors
+            price_selectors = ['div._30jeq3', 'div._30jeq3._1_WHN1', 'div._25b18c']
+            
+            for title_sel in title_selectors:
+                title_elements = soup.select(title_sel)
+                for title_elem in title_elements:
+                    # Find nearest container
+                    container = title_elem.parent
+                    for _ in range(5):  # Look up to 5 levels up
+                        if container is None:
+                            break
+                        # Check if this container has a price element
+                        for price_sel in price_selectors:
+                            if container.select_one(price_sel):
+                                product_containers.append(container)
+                                break
+                        container = container.parent
+        
+        logger.info(f"Found {len(product_containers)} product containers")
+        
+        # Process up to 5 product containers
         for container in product_containers[:5]:
             try:
-                try:
-                    title = container.find_element(By.XPATH, './/div[contains(@class, "_4rR01t") or contains(text(), "iPhone")]').text
-                except:
-                    title = "Title Not Available"
+                # Title extraction - using multiple possible selectors
+                title_selectors = [
+                    'div._4rR01T', 
+                    'a.s1Q9rs', 
+                    'a.IRpwTa', 
+                    'div.CXW8mj',
+                    '.s1Q9rs',
+                    '.B_NuCI'
+                ]
                 
-                try:
-                    price_elem = container.find_element(By.XPATH, './/div[contains(@class, "_30jeq3") or contains(text(), "₹")]')
-                    price = price_elem.text.replace('₹','').replace(',','')
-                except:
-                    price = "Price Not Available"
+                title = "Title Not Available"
+                for selector in title_selectors:
+                    title_elem = container.select_one(selector)
+                    if title_elem:
+                        title = title_elem.text.strip()
+                        break
                 
-                try:
-                    link_elem = container.find_element(By.XPATH, './/a[contains(@href, "/p/")]')
-                    link = link_elem.get_attribute('href')
-                except:
-                    link = "Link Not Available"
+                # Fallback title extraction - look for any text that might be a title
+                if title == "Title Not Available":
+                    for link in container.select('a'):
+                        if link.text and len(link.text.strip()) > 10:
+                            title = link.text.strip()
+                            break
                 
-                flipkart_results.append({
-                    'title': title,
-                    'price': price,
-                    'link': link
-                })
+                # Price extraction - using multiple possible selectors
+                price_selectors = [
+                    'div._30jeq3._1_WHN1',
+                    'div._30jeq3',
+                    'div._25b18c',
+                    'div._3tbKJL'
+                ]
+                
+                price = "Price Not Available"
+                for selector in price_selectors:
+                    price_elem = container.select_one(selector)
+                    if price_elem:
+                        price = price_elem.text.replace('₹','').replace(',','')
+                        break
+                
+                # Link extraction - using multiple possible selectors
+                link_selectors = [
+                    'a._1fQZEK',
+                    'a.s1Q9rs',
+                    'a._2rpwqI',
+                    'a.IRpwTa',
+                    'a[href*="/p/"]'
+                ]
+                
+                link = "Link Not Available"
+                for selector in link_selectors:
+                    link_elem = container.select_one(selector)
+                    if link_elem:
+                        link = link_elem.get('href')
+                        break
+                
+                # If no link found, try any link in the container
+                if link == "Link Not Available":
+                    any_link = container.select_one('a')
+                    if any_link:
+                        link = any_link.get('href')
+                
+                # Format the link correctly
+                if link != "Link Not Available" and not link.startswith('http'):
+                    link = f"https://www.flipkart.com{link}"
+                
+                # Only add if we have at least a title or price
+                if title != "Title Not Available" or price != "Price Not Available":
+                    flipkart_results.append({
+                        'title': title,
+                        'price': price,
+                        'link': link
+                    })
+                    logger.info(f"Added Flipkart product: {title[:30]}...")
             
             except Exception as e:
-                st.warning(f"Flipkart product processing error: {e}")
+                logger.error(f"Flipkart product processing error: {e}")
         
+        # If we still have no results, try an alternative approach
+        if not flipkart_results:
+            logger.info("Trying alternative Flipkart extraction approach")
+            
+            # Look specifically for product grid items
+            grid_items = soup.select('div._1xHGtK._373qXS, div._4ddWXP, div._1xHGtK')
+            logger.info(f"Found {len(grid_items)} grid items")
+            
+            for item in grid_items[:5]:
+                try:
+                    title = item.select_one('a.IRpwTa, a.s1Q9rs, div._2WkVRV').text.strip() if item.select_one('a.IRpwTa, a.s1Q9rs, div._2WkVRV') else "Title Not Available"
+                    price = item.select_one('div._30jeq3, div._30jeq3._1_WHN1').text.replace('₹','').replace(',','') if item.select_one('div._30jeq3, div._30jeq3._1_WHN1') else "Price Not Available"
+                    link = item.select_one('a').get('href') if item.select_one('a') else "Link Not Available"
+                    
+                    if link != "Link Not Available" and not link.startswith('http'):
+                        link = f"https://www.flipkart.com{link}"
+                    
+                    flipkart_results.append({
+                        'title': title,
+                        'price': price,
+                        'link': link
+                    })
+                    
+                except Exception as e:
+                    logger.error(f"Flipkart alternative extraction error: {e}")
+        
+        logger.info(f"Flipkart found {len(flipkart_results)} results")
         return flipkart_results
     
     except Exception as e:
-        st.error(f"Flipkart scraping failed: {e}")
+        logger.error(f"Flipkart scraping failed: {e}")
+        st.error(f"Flipkart scraping encountered an error: {e}")
         return []
     
     finally:
@@ -227,6 +407,11 @@ def show_price_comparison():
             search_button = st.button('Compare Prices 🔄', use_container_width=True)
 
     DRIVER_PATH = str(Path('chromedriver.exe').resolve())
+    
+    # Add debug info about the driver path
+    st.sidebar.info(f"Using Chrome driver at: {DRIVER_PATH}")
+    # Add a checkbox to enable debug mode
+    debug_mode = st.sidebar.checkbox("Enable Debug Mode")
 
     if search_button and search_query:
         progress_text = "Searching across platforms..."
@@ -236,11 +421,25 @@ def show_price_comparison():
             time.sleep(0.01)
             progress_bar.progress(i + 1)
 
-        with st.spinner('Fetching results...'):
+        with st.spinner('Fetching results from Amazon...'):
             amazon_results = scrape_amazon(search_query, DRIVER_PATH)
+        
+        with st.spinner('Fetching results from Flipkart...'):
             flipkart_results = scrape_flipkart(search_query, DRIVER_PATH)
 
         progress_bar.empty()
+        
+        # Show debug information if enabled
+        if debug_mode:
+            st.subheader("Debug Information")
+            st.write(f"Found {len(amazon_results)} Amazon results")
+            st.write(f"Found {len(flipkart_results)} Flipkart results")
+            
+            # Show sample of results
+            if amazon_results:
+                st.write("First Amazon result:", amazon_results[0])
+            if flipkart_results:
+                st.write("First Flipkart result:", flipkart_results[0])
 
         if amazon_results or flipkart_results:
             st.markdown("### 📊 Comparison Results")
@@ -254,14 +453,17 @@ def show_price_comparison():
                     </div>
                 """, unsafe_allow_html=True)
                 
-                for product in amazon_results:
-                    st.markdown(f"""
-                        <div class="product-card">
-                            <h4>{product['title']}</h4>
-                            <p class="price-tag">₹{product['price']}</p>
-                            <a href="{product['link']}" target="_blank">View on Amazon →</a>
-                        </div>
-                    """, unsafe_allow_html=True)
+                if amazon_results:
+                    for product in amazon_results:
+                        st.markdown(f"""
+                            <div class="product-card">
+                                <h4>{product['title']}</h4>
+                                <p class="price-tag">₹{product['price']}</p>
+                                <a href="{product['link']}" target="_blank">View on Amazon →</a>
+                            </div>
+                        """, unsafe_allow_html=True)
+                else:
+                    st.info("No Amazon results found")
 
             with flipkart_col:
                 st.markdown("""
@@ -270,35 +472,63 @@ def show_price_comparison():
                     </div>
                 """, unsafe_allow_html=True)
                 
-                for product in flipkart_results:
-                    st.markdown(f"""
-                        <div class="product-card">
-                            <h4>{product['title']}</h4>
-                            <p class="price-tag">₹{product['price']}</p>
-                            <a href="{product['link']}" target="_blank">View on Flipkart →</a>
-                        </div>
-                    """, unsafe_allow_html=True)
+                if flipkart_results:
+                    for product in flipkart_results:
+                        st.markdown(f"""
+                            <div class="product-card">
+                                <h4>{product['title']}</h4>
+                                <p class="price-tag">₹{product['price']}</p>
+                                <a href="{product['link']}" target="_blank">View on Flipkart →</a>
+                            </div>
+                        """, unsafe_allow_html=True)
+                else:
+                    st.info("No Flipkart results found")
 
-            st.markdown("### 💡 Price Analysis")
-            
-            amazon_prices = [float(p['price']) for p in amazon_results if p['price'].replace('.','').isdigit()]
-            flipkart_prices = [float(p['price']) for p in flipkart_results if p['price'].replace('.','').isdigit()]
+            if amazon_results and flipkart_results:
+                st.markdown("### 💡 Price Analysis")
+                
+                # Convert prices to float, excluding non-numeric values
+                amazon_prices = []
+                for p in amazon_results:
+                    try:
+                        if p['price'] != 'Not Available':
+                            price_str = p['price'].replace('.','').replace(',','').strip()
+                            if price_str.isdigit():
+                                amazon_prices.append(float(price_str))
+                    except (ValueError, TypeError):
+                        pass
+                
+                flipkart_prices = []
+                for p in flipkart_results:
+                    try:
+                        if p['price'] != 'Price Not Available':
+                            price_str = p['price'].replace('.','').replace(',','').strip()
+                            if price_str.isdigit():
+                                flipkart_prices.append(float(price_str))
+                    except (ValueError, TypeError):
+                        pass
 
-            if amazon_prices and flipkart_prices:
-                analysis_cols = st.columns(3)
-                
-                with analysis_cols[0]:
-                    st.metric("Lowest Price on Amazon", f"₹{min(amazon_prices):,.2f}")
-                
-                with analysis_cols[1]:
-                    st.metric("Lowest Price on Flipkart", f"₹{min(flipkart_prices):,.2f}")
-                
-                with analysis_cols[2]:
-                    price_diff = min(amazon_prices) - min(flipkart_prices)
-                    better_platform = "Flipkart" if price_diff > 0 else "Amazon"
-                    st.metric("Potential Savings", 
-                            f"₹{abs(price_diff):,.2f}",
-                            f"Better price on {better_platform}")
+                if amazon_prices and flipkart_prices:
+                    analysis_cols = st.columns(3)
+                    
+                    with analysis_cols[0]:
+                        st.metric("Lowest Price on Amazon", f"₹{min(amazon_prices):,.2f}")
+                    
+                    with analysis_cols[1]:
+                        st.metric("Lowest Price on Flipkart", f"₹{min(flipkart_prices):,.2f}")
+                    
+                    with analysis_cols[2]:
+                        price_diff = min(amazon_prices) - min(flipkart_prices)
+                        better_platform = "Flipkart" if price_diff > 0 else "Amazon"
+                        st.metric("Potential Savings", 
+                                f"₹{abs(price_diff):,.2f}",
+                                f"Better price on {better_platform}")
+                elif amazon_prices:
+                    st.success(f"Best price found on Amazon: ₹{min(amazon_prices):,.2f}")
+                elif flipkart_prices:
+                    st.success(f"Best price found on Flipkart: ₹{min(flipkart_prices):,.2f}")
+                else:
+                    st.warning("Could not compare prices as numeric values not found")
 
         else:
             st.error("No results found. Please try a different search term.")
