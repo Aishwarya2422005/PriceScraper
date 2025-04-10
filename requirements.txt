@@ -8,4 +8,5 @@ webdriver-manager==3.2.2
 webencodings==0.5.1
 plotly
 textblob
+win32com
 
