@@ -7,3 +7,4 @@ urllib3==1.26.7
 webdriver-manager==3.2.2
 webencodings==0.5.1
 plotly
+textblob
