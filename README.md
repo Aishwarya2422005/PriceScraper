@@ -1,7 +1,9 @@
-🛍️ PriceScraper – Your Smart E-commerce Price Comparison Tool
+**🛍️ PriceScraper – Your Smart E-commerce Price Comparison Tool**
+
 PriceScraper is a smart and automated price comparison engine designed to fetch real-time product data from leading Indian e-commerce platforms — Amazon and Flipkart. Built using Python, Selenium, and a simple GUI/CLI interface, PriceScraper helps users compare prices, find the best deals, and make smarter shopping decisions 🧠💰.
 
-📂 Project Structure
+**📂 Project Structure**
+
 Your project is neatly organized with multiple modules for scraping, data handling, and user interface:
 ├── amaz.py                   # Amazon scraper logic
 ├── amazon_searcher.py       # Search functionality for Amazon
@@ -21,7 +23,8 @@ Your project is neatly organized with multiple modules for scraping, data handli
 └── static/, templates/      # (Optional) GUI HTML/CSS if added
 
 
-🚀 Features
+**🚀 Features**
+
 🔎 Product Search & Comparison: Enter a product name to fetch real-time prices from Amazon and Flipkart.
 
 📦 Review Aggregation: Extracts product reviews (Amazon) to assist buying decisions.
@@ -34,10 +37,13 @@ Your project is neatly organized with multiple modules for scraping, data handli
 
 💬 Simple Design: Clean and easy-to-navigate application structure for ease of use.
 
-🛠️ Technology Stack
+
+**🛠️ Technology Stack**
+
 ![image](https://github.com/user-attachments/assets/afa80568-7603-483e-906b-02ee7ca4cffe)
 
-💻 How to Run the Project
+**💻 How to Run the Project**
+
 🔧 Prerequisites
 Make sure you have Python 3.x, pip, and Chrome browser installed.
 git clone https://github.com/Aishwarya2422005/PriceScraper.git
@@ -52,7 +58,7 @@ With GUI (If implemented using app.py):
 python app.py
 
 
-🤖How It Works
+**🤖How It Works**
 Input: The user enters a product name (e.g., “iPhone 14”).
 
 Search: Product names are searched in Amazon and Flipkart via automation.
@@ -63,7 +69,7 @@ Display: Output is shown side-by-side in the terminal or GUI for comparison.
 
 Review Analysis: Amazon review data is also fetched to aid decisions.
 
-👨‍👩‍👧‍👦 Use Cases
+**👨‍👩‍👧‍👦 Use Cases**
 📌 Shoppers looking for the best price across platforms
 
 📌 Deal-hunters during sales and festive seasons
@@ -72,7 +78,9 @@ Review Analysis: Amazon review data is also fetched to aid decisions.
 
 📌 Developers building retail price comparison systems
 
-OUPUT:
+**OUPUT:**
+
+
 ![image](https://github.com/user-attachments/assets/7d9f233e-0c19-4e05-b03e-eedf6d4f495f)
 ![image](https://github.com/user-attachments/assets/60d2362e-0f00-41fd-94ef-1aa40ddc14d1)
 ![image](https://github.com/user-attachments/assets/4cae4180-bc8f-483d-9e08-ffecd6f3698c)
