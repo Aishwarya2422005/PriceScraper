@@ -25,7 +25,9 @@ image
 
 🛠️ Technology Stack
 
-image
+![image](https://github.com/user-attachments/assets/f21972d8-2fdc-423b-a2c6-8c353aace12a)
+
+
 
 💻 How to Run the Project
 
@@ -54,11 +56,17 @@ Review Analysis: Amazon review data is also fetched to aid decisions.
 📌 Developers building retail price comparison systems
 
 OUPUT:
+![image](https://github.com/user-attachments/assets/774bf1b0-6a6a-4da0-ab1b-1c86adf94c05)
 
-image
+![image](https://github.com/user-attachments/assets/ec2acfd9-db6e-4e3f-8625-dad00181fbad)
 
-image
+![image](https://github.com/user-attachments/assets/6094841f-426c-471d-926b-1ab893d960dc)
 
-image
+![image](https://github.com/user-attachments/assets/3ed0efa5-6662-4178-a1e7-50f17259fa14)
 
-image
+![Uploading image.png…]()
+
+
+
+
+
