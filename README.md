@@ -5,22 +5,9 @@ PriceScraper is a smart and automated price comparison engine designed to fetch 
 **📂 Project Structure**
 
 Your project is neatly organized with multiple modules for scraping, data handling, and user interface:
-├── amaz.py                   # Amazon scraper logic
-├── amazon_searcher.py       # Search functionality for Amazon
-├── amazonreview.py          # Fetches and displays Amazon reviews
-├── flipAPI.py               # Flipkart scraping API
-├── flipkart_searcher.py     # Search functionality for Flipkart
-├── flipkart_debug.html      # Debugging HTML structure for Flipkart
-├── app.py                   # Entry point for GUI-based interface
-├── without_gui.py           # CLI-based version of the app
-├── main.py                  # Ties together all modules
-├── test.py                  # Testing module
-├── main.exe                 # Windows executable
-├── amazon_cookies.pkl       # Stores session cookies for Amazon
-├── chromedriver.exe         # Chrome driver for Selenium automation
-├── userdb.db                # SQLite database for user/session data
-├── requirements.txt         # Python dependencies
-└── static/, templates/      # (Optional) GUI HTML/CSS if added
+
+![image](https://github.com/user-attachments/assets/e638b2f1-0d47-41b8-9750-3a8f835864c7)
+
 
 
 **🚀 Features**
