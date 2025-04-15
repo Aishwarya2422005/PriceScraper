@@ -2,6 +2,7 @@
 
 PriceScraper is a smart and automated price comparison engine designed to fetch real-time product data from leading Indian e-commerce platforms — Amazon and Flipkart. Built using Python, Selenium, and a simple GUI/CLI interface, PriceScraper helps users compare prices, find the best deals, and make smarter shopping decisions 🧠💰.
 
+
 **📂 Project Structure**
 
 Your project is neatly organized with multiple modules for scraping, data handling, and user interface:
@@ -25,6 +26,7 @@ Your project is neatly organized with multiple modules for scraping, data handli
 💬 Simple Design: Clean and easy-to-navigate application structure for ease of use.
 
 
+
 **🛠️ Technology Stack**
 
 ![image](https://github.com/user-attachments/assets/afa80568-7603-483e-906b-02ee7ca4cffe)
@@ -45,6 +47,7 @@ With GUI (If implemented using app.py):
 python app.py
 
 
+
 **🤖How It Works**
 Input: The user enters a product name (e.g., “iPhone 14”).
 
@@ -56,6 +59,7 @@ Display: Output is shown side-by-side in the terminal or GUI for comparison.
 
 Review Analysis: Amazon review data is also fetched to aid decisions.
 
+
 **👨‍👩‍👧‍👦 Use Cases**
 📌 Shoppers looking for the best price across platforms
 
@@ -64,6 +68,7 @@ Review Analysis: Amazon review data is also fetched to aid decisions.
 📌 Students learning web scraping and automation
 
 📌 Developers building retail price comparison systems
+
 
 **OUPUT:**
 
