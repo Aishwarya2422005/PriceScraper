@@ -64,7 +64,8 @@ OUPUT:
 
 ![image](https://github.com/user-attachments/assets/3ed0efa5-6662-4178-a1e7-50f17259fa14)
 
-![Uploading image.png…]()
+![image](https://github.com/user-attachments/assets/faf0ebf1-fccd-4191-9146-9314d4deaeea)
+
 
 
 
