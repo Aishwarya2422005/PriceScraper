@@ -82,8 +82,11 @@ Review Analysis: Amazon review data is also fetched to aid decisions.
 
 
 ![image](https://github.com/user-attachments/assets/7d9f233e-0c19-4e05-b03e-eedf6d4f495f)
+
 ![image](https://github.com/user-attachments/assets/60d2362e-0f00-41fd-94ef-1aa40ddc14d1)
+
 ![image](https://github.com/user-attachments/assets/4cae4180-bc8f-483d-9e08-ffecd6f3698c)
+
 ![image](https://github.com/user-attachments/assets/69c06e24-3fea-4b4c-a657-a17d11d1bcd4)
 
 
